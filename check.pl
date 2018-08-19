@@ -17,7 +17,7 @@ if ($outfile) {
   select(OUTF);
   }
 # --
-my $count;
+my ($excount, $cdcount);
 #0     1       2     3     4   5   6     7      8      9    10    11      12    13    14
 #id gstatus gtype status type asm chr strand excount exlen cdlen exreps cdreps excov cdcov
 open(INF, $file) || die("Error opening $file\n");
@@ -25,12 +25,16 @@ while (<INF>) {
  next if m/^id\t/;
  chomp;
  my @t=split(/\t/);
- if ($t[3] eq 'known_fantom' || $t[3] eq 'novel') {
-   $count++ if ($t[13]>=$istart && $t[13]<$iend);
+ if (($t[3] eq 'known_fantom' || $t[3] eq 'novel') &&
+     ($t[10]>0) ) {
+   $excount++ if ($t[13]>=$istart && $t[13]<$iend);
+   $cdcount++ if ($t[14]>=$istart && $t[14]<$iend);
  }
 }
 close(INF);
-print "Count for \[$istart, $iend): $count\n";
+print "Count for exon coverage \[$istart, $iend): $excount\n";
+print "Count for CDS coverage  \[$istart, $iend): $cdcount\n";
+
 # --
 if ($outfile) {
  select(STDOUT);
