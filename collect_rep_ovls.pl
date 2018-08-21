@@ -12,7 +12,7 @@ my $usage = q/Usage:
  The repeat coverage info for each transcript will be printed at stdout
  as tab delimited columns:
  t_id chr strand excount exlen cdslen exovls cdsovls excov% cdscov%
-                 Alu-excov% Alu-cdcov% SINE_LINE-excov% SINE_LINE_cdcov%
+                 Alu-excov% Alu-cdcov% LINE_LTR-excov% LINE_LTR-cdcov%
  
  If transcripts.gff is given, 5 more columns are inserted after t_id:
  
@@ -66,7 +66,7 @@ my $qxbed=shift(@ARGV);
 die($usage."Error: no BED file $qxbed found!\n") unless -f $qxbed;
 open(BED, $qxbed) || die ("Error opening file $qxbed\n");
 my @tdata; #currently open transcripts, same order they were encountered
-  # [tID, chr, strand, numexons, [exons], [CDS_segs], [repClass_exovls], [repClass_cdovls], [repeats_exovls], [repeats_cdsovls], [Alu_exovls], [Alu_cdovls], [SINE_exovls], [SINE_cdovls]]
+  # [tID, chr, strand, numexons, [exons], [CDS_segs], [repClass_exovls], [repClass_cdovls], [repeats_exovls], [repeats_cdsovls], [Alu_exovls], [Alu_cdovls], [LINE_exovls], [LINE_cdovls]]
   #   0     1     2       3        4[]      5[]            6[]            7[]                  8[]               9[]            10[]           11[]             12[]       13[]
 my %th; # tID => $tdata[] entry 
 #my $skipreg; #skip repeated region (common exon)
@@ -75,11 +75,11 @@ my $debug=0;
 #print header
 if ($gff) {
 print join("\t", 'id','gstatus','gtype', 'status', 'type', 'asm', 'chr', 'strand', 'excount', 'exlen', 
- 'cdlen', 'exreps', 'cdreps', 'excov', 'cdcov', 'alu_excov', 'alu_cdcov', 'sine_excov', 'sine_cdcov')."\n";
+ 'cdlen', 'exreps', 'cdreps', 'excov', 'cdcov', 'alu_excov', 'alu_cdcov', 'line_excov', 'line_cdcov')."\n";
 }
 else {
 print join("\t", 'id', 'chr', 'strand', 'excount', 'exlen', 
- 'cdlen', 'exreps', 'cdreps', 'excov', 'cdcov', 'alu_excov', 'alu_cdcov', 'sine_excov', 'sine_cdcov')."\n";
+ 'cdlen', 'exreps', 'cdreps', 'excov', 'cdcov', 'alu_excov', 'alu_cdcov', 'line_excov', 'line_cdcov')."\n";
 }
 my ($ctd, $ce1, $ce2, $co1, $co2); #current transcript/exon/CDS data
 # Example entry in tabix output:
@@ -179,13 +179,13 @@ sub writeTData {
      }
      my ($excov, $cdcov)=(showOvl($$td[8], $exonlen, $tid), showOvl($$td[9], $cdslen, $tid));
      my ($aluexcov, $alucdcov)=(showOvl($$td[10], $exonlen, $tid),  showOvl($$td[11], $cdslen, $tid));
-     my ($sinexcov, $sincdcov)=(showOvl($$td[12], $exonlen, $tid),  showOvl($$td[13], $cdslen, $tid));
+     my ($linexcov, $lincdcov)=(showOvl($$td[12], $exonlen, $tid),  showOvl($$td[13], $cdslen, $tid));
      print "\t".join("\t", $exonlen, $cdslen, 
               showRepOvl($$td[6], $exonlen, $tid), showRepOvl($$td[7]),
-              $excov, $cdcov, $aluexcov, $alucdcov, $sinexcov, $sincdcov
+              $excov, $cdcov, $aluexcov, $alucdcov, $linexcov, $lincdcov
               )."\n";
-     die("Error: Alu/SINE/LINE exon cov > total repeat exon cov for $tid ?!\n") if ($aluexcov>$excov || $sinexcov>$excov);
-     die("Error: Alu/SINE/LINE CDS cov > total repeat CDS cov for $tid ?!\n") if ($alucdcov>$cdcov || $sincdcov>$cdcov);
+     die("Error: Alu/LTR/LINE exon cov > total repeat exon cov for $tid ?!\n") if ($aluexcov>$excov || $linexcov>$excov);
+     die("Error: Alu/LTR/LINE CDS cov > total repeat CDS cov for $tid ?!\n") if ($alucdcov>$cdcov || $lincdcov>$cdcov);
      delete($th{$tid});
      @tdata= grep { $_->[0] ne $tid } @tdata;
   }
@@ -234,14 +234,14 @@ sub showOvl {
 }
 
 sub addRepOvl {
- my ($rset, $rn, $v1, $v2, $arset, $aluset, $sineset)=@_;
+ my ($rset, $rn, $v1, $v2, $arset, $aluset, $lineset)=@_;
  #rset=set of intervals to update for a specific repeat class/type
  #     list of [repname, [ [ovl1-ovl2], ...] ]
  #rn is an entry from tabix overlap report, e.g. "SINE|Alu|AluSp"
  #$v1-$v2 =overlap of exon with this repeat
  #arset = set of intervals overlapped by *any* repeat
  #aluset = set of intervals overlapped by Alu repeats
- #sineset = set of intervals overlapped by LINE/SINE repeats
+ #lineset = set of intervals overlapped by LINE/LTR repeats
  my @rps=(split(/\|/, $rn)); # e.g. ('SINE', 'Alu', 'Alusp')
  my $rclass= (@rps>1 && $rps[0] ne $rps[1]) ? join('|',@rps[0,1]) : $rps[0];
  my $added=0;
@@ -265,7 +265,7 @@ sub addRepOvl {
  }
  ovlRegList($v1, $v2, $arset) if ($arset); #update list of any repeat regions
  ovlRegList($v1, $v2, $aluset) if ($aluset && $rclass=~m/\|Alu/); #update list of Alu repeat regions
- ovlRegList($v1, $v2, $sineset) if ($sineset && $rclass=~m/^[LS]INE/);
+ ovlRegList($v1, $v2, $lineset) if ($lineset && $rclass=~m/^(LINE|LTR)/);
 }
 
 sub ovlRegList {
