@@ -49,7 +49,7 @@ while (<INF>) {
  chomp;
  my @t=split(/\t/);
  my $pass=0;
- #my $dbg=($t[0] eq 'CHS.159.1');
+ #my $dbg=($t[0] eq 'CHS.696.1');
  if ($noncoding) {
    $pass=($t[1] eq 'known_fantom' || $t[1] eq 'novel') && ($t[2] ne 'protein_coding')
      && ($t[13]>=$istart && $t[13]<$iend);
@@ -58,14 +58,19 @@ while (<INF>) {
    $pass=($t[1] eq 'known_fantom' || $t[1] eq 'novel') && ($t[2] eq 'protein_coding')
      && ($t[10]>0) && ($t[14]>=$istart && $t[14]<$iend);
  }
+ #print STDERR "pass=$pass ; \$t[$aluix]=".$t[$aluix]."(istart=$istart, iend=$iend)\n" if $dbg;
  if ($pass) {
    $excount++ if ($t[13]>=$istart && $t[13]<$iend);
    $cdcount++ if ($t[14]>=$istart && $t[14]<$iend);
    if ($print) {
      if ($print eq 'all') { print "$_\n"; }
      else {
-       print "$_\n" if (($print eq 'alu' || $print eq 'both') && $t[$aluix]>=$istart && $t[$aluix]<$iend);
-       print "$_\n" if (($print eq 'line' || $print eq 'both') && $t[$lineix]>=$istart && $t[$lineix]<$iend);
+       my $np=1;
+       if (($print eq 'alu' || $print eq 'both') && ($t[$aluix]>=$istart) && ($t[$aluix]<$iend)) {
+           print "$_\n";
+           $np=0;
+       }
+       print "$_\n" if ($np && ($print eq 'line' || $print eq 'both') && ($t[$lineix]>=$istart) && ($t[$lineix]<$iend));
      }
    }
  }

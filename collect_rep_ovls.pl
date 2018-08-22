@@ -264,7 +264,7 @@ sub addRepOvl {
    push(@$rset, [$rclass, [[$v1, $v2]]] );
  }
  ovlRegList($v1, $v2, $arset) if ($arset); #update list of any repeat regions
- ovlRegList($v1, $v2, $aluset) if ($aluset && $rclass=~m/\|Alu/); #update list of Alu repeat regions
+ ovlRegList($v1, $v2, $aluset) if ($aluset && $rclass=~m/\|(Alu|SVA)/); #update list of Alu repeat regions
  ovlRegList($v1, $v2, $lineset) if ($lineset && $rclass=~m/^(LINE|LTR)/);
 }
 
